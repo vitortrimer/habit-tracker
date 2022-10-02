@@ -8,7 +8,10 @@
 import SwiftUI
 
 struct AddNewHabit: View {
+    
     @EnvironmentObject var habitModel: HabitViewModel
+    @Environment(\.self) var env
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 15) {
@@ -77,7 +80,51 @@ struct AddNewHabit: View {
                     }
                     .padding(.top, 15)
                 }
+                
+                Divider()
+                    .padding(.vertical, 10)
+                
+                HStack {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Reminder")
+                            .fontWeight(.semibold)
+                        
+                        Text("Just notification")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    Toggle(isOn: $habitModel.isReminderOn) {
+                    }
+                    .labelsHidden()
+                }
+                
+                HStack(spacing: 12) {
+                    Label {
+                        Text(habitModel.reminderDate.formatted(date: .omitted, time: .shortened))
+                    } icon: {
+                        Image(systemName: "clock")
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 12)
+                    .background(Color(CGColor(red: 41/255, green: 41/255, blue: 41/255, alpha: 0.3)), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .onTapGesture {
+                        withAnimation {
+                            habitModel.showTimePicker.toggle()
+                        }
+                    }
+                    
+                    TextField("Description", text: $habitModel.reminderText)
+                        .padding(.horizontal)
+                        .padding(.vertical, 10)
+                        .background(Color(CGColor(red: 41/255, green: 41/255, blue: 41/255, alpha: 0.3)), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+                .frame(height: habitModel.isReminderOn ? nil : 0)
+                .opacity(habitModel.isReminderOn ? 1 : 0)
+                
             }
+            .animation(.easeInOut, value: habitModel.isReminderOn)
             .frame(maxHeight: .infinity, alignment: .top)
             .padding()
             .navigationBarTitleDisplayMode(.inline)
@@ -94,12 +141,43 @@ struct AddNewHabit: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        
+                        Task {
+                            if await habitModel.addHabit(context: env.managedObjectContext) {
+                                env.dismiss()
+                            }
+                        }
                     }
                     .tint(.white)
+                    .disabled(!habitModel.doneStatus())
+                    .opacity(habitModel.doneStatus() ? 1 : 0.6)
                 }
             }
         }
+        .overlay {
+            if habitModel.showTimePicker {
+                ZStack {
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation {
+                                habitModel.showTimePicker.toggle()
+                            }
+                        }
+                    
+                    DatePicker.init("", selection: $habitModel.reminderDate, displayedComponents: [.hourAndMinute])
+                        .datePickerStyle(.wheel)
+                        .labelsHidden()
+                        .padding()
+                        .background {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color(CGColor(red: 41/255, green: 41/255, blue: 41/255, alpha: 1)))
+                        }
+                        .padding()
+                }
+            }
+        }
+       
     }
 }
 
